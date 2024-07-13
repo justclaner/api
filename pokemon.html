@@ -4,8 +4,245 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Pokemon Stats Lookup</title>
+    <style>
+        body {
+            text-align: center;
+            font-size:24px;
+        }
+
+        body > * {
+            margin: auto;
+        }
+
+        .container {
+            display: block;
+            border: 1px solid black;
+            width: fit-content;
+            height: fit-content;
+
+            padding: 20px;
+            max-width: 800px;
+            min-height: 700px;
+        }
+
+        .selectors > select {
+            display: inline-block;
+            height: 50px;
+            font-size: 24px;
+            border-radius: 10px;
+        }
+
+        img {
+            width: 300px;
+            height: 300px;
+            background-color: gray;
+            border: 1px solid black;
+            margin: auto;
+            margin-top: 10px;
+        }
+
+        #imageFeedback {
+            font-size: 24px;
+            transform: translateY(-200px);
+        }
+
+
+        .statContainer {
+            border: 1px solid black;
+            height: fit-content;
+            width: 80%;
+            text-align: left;
+            margin: auto;
+            padding-left: 10px;
+        }
+        @media (max-width: 600px) {
+            body {
+                background-color: lightblue;
+            }
+        }
+
+    </style>
 </head>
 <body>
-    
+    <h1>Pokemon Stats Lookup</h1>
+    <br>
+    <div class="container">
+        <div class="selectors">
+            <label for="">Select by Name (A-Z) </label>
+            <select id="pokemonSelectorByName" onchange="updatePokemon(this.value)">
+                <option value="">Select by Name A-Z</option>
+            </select> <br><br>
+
+            <label for="">Select</label>
+            <select id="pokemonSelectorByNumber" onchange="updatePokemon(this.value)">
+                <option value="">Select</option>
+            </select>
+            <br><br>
+            <label style="font-size: 24px;">Type Pokemon Name or Number:</label> 
+            <input list="typeOptions" type="text" style="height: 30px; font-size: 24px;" oninput="
+            // this.value = this.value.replace(/\d|\W/g,''); 
+             searchPokemon(this.value.toLowerCase()); ">
+            <datalist id="typeOptions"> </datalist>
+        </div> <br> <br>
+        <img src="https://img.freepik.com/free-photo/cement-texture_1194-5269.jpg" id="pokemonImage" alt="">
+        <p id="imageFeedback" style="visibility:hidden;">ss</p>
+
+        <div class="statContainer">
+        <p id="pokemonName">Name: </p>
+        <p id="pokemonType">Type(s): </p>
+        <h4>Base Stats</h4>
+        <p id="hp">HP: </p>
+        <p id="attack">Attack: </p>
+        <p id="defense">Defense: </p>
+        <p id="special-attack">Special Attack: </p>
+        <p id="special-defense">Special Defense: </p>
+        <p id="speed">Speed: </p>
+        </div>
+
+
+    </div>
+    <audio id="crySound" src=""></audio>
 </body>
+<script>
+
+    let pokemonSelectorByName = document.getElementById("pokemonSelectorByName");
+    let pokemonSelectorByNumber = document.getElementById("pokemonSelectorByNumber");
+    let typeInputOptionsList = document.getElementById("typeOptions");
+    let pokemonImage = document.getElementById("pokemonImage");
+    let imageFeedback = document.getElementById("imageFeedback");
+    let pokemonName = document.getElementById("pokemonName");
+    let pokemonType = document.getElementById("pokemonType");
+
+
+    var pokemonList = "https://pokeapi.co/api/v2/pokemon/?limit=1302&offset=0";
+    let baseUrl = "https://pokeapi.co/api/v2/pokemon/"
+    var pokemonByNumber = [];
+    var pokemonByName = [];
+    fetchPokemon();
+    async function fetchPokemon() {
+        try {
+
+
+
+            const response = await fetch(pokemonList);
+
+           if(!response.ok) {throw new Error("Could not fetch resource!")}
+
+            const data = await response.json();
+
+            let pokeArray = data.results;
+            for (let i = 0; i < pokeArray.length; i++) {
+                let name = pokeArray[i].name;
+                pokemonByNumber.push(name);
+                pokemonByName.push(name);
+            }
+            pokemonByName.sort();
+
+            for (let i = 0; i < pokemonByNumber.length; i++) {
+                let optionName = document.createElement("option");
+                let optionNumber = document.createElement("option");
+                let optionDataList = document.createElement("option");
+
+                optionName.value = pokemonByName[i];
+                optionNumber.value = pokemonByNumber[i];
+                optionDataList.value = firstUpperCase(pokemonByName[i]);
+
+                typeInputOptionsList.appendChild(optionDataList);
+                
+                let num = "";
+                for (let j = 0; j < 3 - Math.floor(Math.log10(i+1)); j++) {
+                    num+="0";
+                }
+                num += parseInt(i+1);
+
+                let textName = document.createTextNode(firstUpperCase(pokemonByName[i]));
+                let textNumber = document.createTextNode(num + " " + firstUpperCase(pokemonByNumber[i]));
+
+                
+                optionName.appendChild(textName);
+                pokemonSelectorByName.appendChild(optionName);
+                //optionName.removeChild(optionName.firstChild());
+                
+
+                optionNumber.appendChild(textNumber);
+                pokemonSelectorByNumber.appendChild(optionNumber);
+                
+            }
+
+
+        } catch(error) {
+            console.error(error);
+        }
+    }
+
+    function updatePokemon(pokemon) {
+        pokemonUrl = baseUrl + pokemon;
+        getPokemonStats(pokemonUrl);
+    }
+    
+    function searchPokemon(input) {
+        let index = parseInt(input);
+        if (pokemonByName.includes(input)) {
+        pokemonUrl = baseUrl + input;
+        getPokemonStats(pokemonUrl);
+        } else if (index > 0 && index < 1303) {
+            pokemonUrl = baseUrl + pokemonByNumber[index];
+            getPokemonStats(pokemonUrl);
+        } else {
+            //clear();
+        }
+    }
+
+    async function getPokemonStats(url) {
+        try {
+            const response = await fetch(url);
+
+            const data = await response.json();
+
+
+            //image
+            if(data.sprites.front_default != null) {
+            pokemonImage.src = data.sprites.front_default;
+            pokemonImage.style.visibility = "visible";
+            } else {
+                pokemonImage.src = "https://img.freepik.com/free-photo/cement-texture_1194-5269.jpg";
+                imageFeedback.textContent = "Image not found."
+                imageFeedback.style.visibility = "visible";
+            }
+            //name
+            pokemonName.textContent = "Name: " + firstUpperCase(data.name);
+            pokemonSelectorByName.value = data.name;
+            pokemonSelectorByNumber.value = data.name;
+
+            //pokemon type
+            let typesText = "Type(s): ";
+            for (let i = 0; i < data.types.length; i++) {
+                typesText += (firstUpperCase(data.types[i].type.name) +  " ");
+            }
+            pokemonType.textContent = typesText;
+
+
+            //base stats
+            let hp = data.stats[0].base_stat;
+            let attack = data.stats[1].base_stat;
+            let defense = data.stats[2].base_stat;
+            let specialAttack = data.stats[3].base_stat;
+            let specialDefense = data.stats[4].base_stat;
+            let speed = data.stats[5].base_stat;
+         
+            document.getElementById("hp").textContent = "HP: " + hp;
+            document.getElementById("attack").textContent = "Attack: " + attack;
+            document.getElementById("defense").textContent = "Defense: " + defense;
+            document.getElementById("special-attack").textContent = "Special Attack: " + specialAttack;
+            document.getElementById("special-defense").textContent = "Special Defense: " + specialDefense;
+            document.getElementById("speed").textContent = "Speed: " + speed;
+        } catch (error) {
+            console.error(error);
+        }
+    }
+
+    function firstUpperCase(string) {
+        return string[0].toUpperCase() + string.slice(1);
+    }
+</script>
 </html>
